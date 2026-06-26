@@ -7,7 +7,7 @@ from email.mime.text import MIMEText
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-URL = "https://goldpricez.com/qar/gram"
+URL = "https://goldpricez.com/qa/22k/gram"
 
 PATTERN_22K = re.compile(r'\b22\s*(?:K|Karat)\b', re.I)
 PATTERN_24K = re.compile(r'\b24\s*(?:K|Karat)\b', re.I)
