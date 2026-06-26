@@ -7,34 +7,60 @@ from email.mime.text import MIMEText
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-URL = "https://www.malabargoldanddiamonds.com/ae/goldprice"
+URL = "https://goldpricez.com/qar/gram"
 
 def get_gold_rate():
     headers = {
-        "User-Agent": "Mozilla/5.0",
-        "Accept-Language": "en-US,en;q=0.9",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
     }
 
     r = requests.get(URL, timeout=30, headers=headers)
     r.raise_for_status()
 
-    html = r.text
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(r.text, "html.parser")
     text = soup.get_text(" ", strip=True)
 
-    # Save page for debugging in GitHub logs
     print("Page title:", soup.title.get_text(strip=True) if soup.title else "No title")
-    print("22kt-price found:", "22kt-price" in html)
-    print("QAR found:", "QAR" in html)
 
-    match_22 = re.search(r"22\s*(?:KT|K|Carat).*?(QAR\s*[\d,.]+|[\d,.]+\s*QAR)", text, re.I)
-    match_24 = re.search(r"24\s*(?:KT|K|Carat).*?(QAR\s*[\d,.]+|[\d,.]+\s*QAR)", text, re.I)
+    rate_22k_raw = None
+    rate_24k_raw = None
 
-    if not match_22:
-        raise Exception("22K gold rate not found. Website may be blocking GitHub or loading price by JavaScript.")
+    # Strategy 1: look for table rows with "22 Karat" / "24 Karat" labels
+    for row in soup.find_all("tr"):
+        cells = row.find_all("td")
+        if len(cells) >= 2:
+            label = cells[0].get_text(strip=True)
+            if re.search(r'\b22\s*(?:K|Karat)\b', label, re.I) and not rate_22k_raw:
+                for cell in cells[1:]:
+                    val = re.sub(r'[^\d.]', '', cell.get_text(strip=True))
+                    if re.match(r'\d+\.?\d*$', val):
+                        rate_22k_raw = val
+                        break
+            elif re.search(r'\b24\s*(?:K|Karat)\b', label, re.I) and not rate_24k_raw:
+                for cell in cells[1:]:
+                    val = re.sub(r'[^\d.]', '', cell.get_text(strip=True))
+                    if re.match(r'\d+\.?\d*$', val):
+                        rate_24k_raw = val
+                        break
 
-    rate_22k = match_22.group(1)
-    rate_24k = match_24.group(1) if match_24 else "Not found"
+    # Strategy 2: fallback regex on full page text
+    if not rate_22k_raw:
+        m = re.search(r'22\s*(?:K|Karat)[^0-9]{1,60}?([\d]+\.[\d]+)', text, re.I)
+        if m:
+            rate_22k_raw = m.group(1)
+
+    if not rate_24k_raw:
+        m = re.search(r'24\s*(?:K|Karat)[^0-9]{1,60}?([\d]+\.[\d]+)', text, re.I)
+        if m:
+            rate_24k_raw = m.group(1)
+
+    if not rate_22k_raw:
+        raise Exception("22K gold rate not found. The source page may have changed structure.")
+
+    rate_22k = f"QAR {rate_22k_raw} / gram"
+    rate_24k = f"QAR {rate_24k_raw} / gram" if rate_24k_raw else "Not found"
 
     updated = datetime.now(ZoneInfo("Asia/Qatar")).strftime("%d-%m-%Y %I:%M %p")
 
