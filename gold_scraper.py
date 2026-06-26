@@ -9,6 +9,9 @@ from zoneinfo import ZoneInfo
 
 URL = "https://goldpricez.com/qar/gram"
 
+PATTERN_22K = re.compile(r'\b22\s*(?:K|Karat)\b', re.I)
+PATTERN_24K = re.compile(r'\b24\s*(?:K|Karat)\b', re.I)
+
 def get_gold_rate():
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -32,13 +35,13 @@ def get_gold_rate():
         cells = row.find_all("td")
         if len(cells) >= 2:
             label = cells[0].get_text(strip=True)
-            if re.search(r'\b22\s*(?:K|Karat)\b', label, re.I) and not rate_22k_raw:
+            if PATTERN_22K.search(label) and not rate_22k_raw:
                 for cell in cells[1:]:
                     val = re.sub(r'[^\d.]', '', cell.get_text(strip=True))
                     if re.match(r'\d+\.?\d*$', val):
                         rate_22k_raw = val
                         break
-            elif re.search(r'\b24\s*(?:K|Karat)\b', label, re.I) and not rate_24k_raw:
+            elif PATTERN_24K.search(label) and not rate_24k_raw:
                 for cell in cells[1:]:
                     val = re.sub(r'[^\d.]', '', cell.get_text(strip=True))
                     if re.match(r'\d+\.?\d*$', val):
@@ -47,12 +50,12 @@ def get_gold_rate():
 
     # Strategy 2: fallback regex on full page text
     if not rate_22k_raw:
-        m = re.search(r'22\s*(?:K|Karat)[^0-9]{1,60}?([\d]+\.[\d]+)', text, re.I)
+        m = re.search(r'22\s*(?:K|Karat)[^0-9]{1,60}?([\d]+(?:\.[\d]+)?)', text, re.I)
         if m:
             rate_22k_raw = m.group(1)
 
     if not rate_24k_raw:
-        m = re.search(r'24\s*(?:K|Karat)[^0-9]{1,60}?([\d]+\.[\d]+)', text, re.I)
+        m = re.search(r'24\s*(?:K|Karat)[^0-9]{1,60}?([\d]+(?:\.[\d]+)?)', text, re.I)
         if m:
             rate_24k_raw = m.group(1)
 
