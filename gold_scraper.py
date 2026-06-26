@@ -1,4 +1,5 @@
 import os
+import re
 import smtplib
 import requests
 from bs4 import BeautifulSoup
@@ -9,34 +10,43 @@ from zoneinfo import ZoneInfo
 URL = "https://www.malabargoldanddiamonds.com/ae/goldprice"
 
 def get_gold_rate():
-    r = requests.get(URL, timeout=20, headers={"User-Agent": "Mozilla/5.0"})
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+
+    r = requests.get(URL, timeout=30, headers=headers)
     r.raise_for_status()
 
-    soup = BeautifulSoup(r.text, "html.parser")
+    html = r.text
+    soup = BeautifulSoup(html, "html.parser")
+    text = soup.get_text(" ", strip=True)
 
-    rate_22k_tag = soup.find("span", class_="price 22kt-price")
-    rate_24k_tag = soup.find("span", class_="price 24kt-price")
-    updated_tag = soup.find("span", class_="update-date")
+    # Save page for debugging in GitHub logs
+    print("Page title:", soup.title.get_text(strip=True) if soup.title else "No title")
+    print("22kt-price found:", "22kt-price" in html)
+    print("QAR found:", "QAR" in html)
 
-    if not rate_22k_tag:
-        raise Exception("22K gold rate not found on website")
+    match_22 = re.search(r"22\s*(?:KT|K|Carat).*?(QAR\s*[\d,.]+|[\d,.]+\s*QAR)", text, re.I)
+    match_24 = re.search(r"24\s*(?:KT|K|Carat).*?(QAR\s*[\d,.]+|[\d,.]+\s*QAR)", text, re.I)
 
-    rate_22k = rate_22k_tag.get_text(strip=True)
-    rate_24k = rate_24k_tag.get_text(strip=True) if rate_24k_tag else "Not found"
-    updated = updated_tag.get_text(strip=True) if updated_tag else "Not found"
+    if not match_22:
+        raise Exception("22K gold rate not found. Website may be blocking GitHub or loading price by JavaScript.")
+
+    rate_22k = match_22.group(1)
+    rate_24k = match_24.group(1) if match_24 else "Not found"
+
+    updated = datetime.now(ZoneInfo("Asia/Qatar")).strftime("%d-%m-%Y %I:%M %p")
 
     return rate_22k, rate_24k, updated
 
 def send_email(rate_22k, rate_24k, updated):
-    now = datetime.now(ZoneInfo("Asia/Qatar")).strftime("%d-%m-%Y %I:%M %p")
-
     body = f"""Daily Gold Rate - Doha
 
 22 Carat Gold: {rate_22k}
 24 Carat Gold: {rate_24k}
 
-Website Updated: {updated}
-Email Sent: {now} Doha Time
+Checked Time: {updated} Doha Time
 
 Source:
 {URL}
