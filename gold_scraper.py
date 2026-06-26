@@ -14,9 +14,16 @@ def get_gold_rate():
 
     soup = BeautifulSoup(r.text, "html.parser")
 
-    rate_22k = soup.select_one(".price.22kt-price").get_text(strip=True)
-    rate_24k = soup.select_one(".right_india-24-carat-rate .price").get_text(strip=True)
-    updated = soup.select_one(".update-date").get_text(strip=True)
+    rate_22k_tag = soup.find("span", class_="price 22kt-price")
+    rate_24k_tag = soup.find("span", class_="price 24kt-price")
+    updated_tag = soup.find("span", class_="update-date")
+
+    if not rate_22k_tag:
+        raise Exception("22K gold rate not found on website")
+
+    rate_22k = rate_22k_tag.get_text(strip=True)
+    rate_24k = rate_24k_tag.get_text(strip=True) if rate_24k_tag else "Not found"
+    updated = updated_tag.get_text(strip=True) if updated_tag else "Not found"
 
     return rate_22k, rate_24k, updated
 
