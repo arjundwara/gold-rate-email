@@ -6,37 +6,45 @@ from bs4 import BeautifulSoup
 from email.mime.text import MIMEText
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from playwright.sync_api import sync_playwright
 
 URL = "https://www.malabargoldanddiamonds.com/ae/goldprice"
 
 
 def get_gold_rate():
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
 
-    r = requests.get(URL, timeout=30, headers=headers)
-    r.raise_for_status()
+        page = browser.new_page()
 
-    html = r.text
+        page.goto(URL, wait_until="networkidle")
+
+        # Country
+        page.select_option("#gold-country-list", label="Qatar")
+
+        # Wait until states are loaded
+        page.wait_for_timeout(2000)
+
+        # State
+        page.select_option("#gold-state-list", label="Doha")
+
+        # Submit
+        page.click("button.submit.gold-rate-btn")
+
+        # Wait for the rates to refresh
+        page.wait_for_timeout(3000)
+
+        html = page.content()
+
+        browser.close()
+
     soup = BeautifulSoup(html, "html.parser")
 
-    print("Page title:", soup.title.get_text(strip=True) if soup.title else "No title")
-    print("22kt-price found:", "22kt-price" in html)
-    print("QAR found:", "QAR" in html)
+    rate22 = soup.select_one("span.price.\\32 2kt-price").get_text(strip=True)
+    rate24 = soup.select_one("li.right_india-24-carat-rate span.price").get_text(strip=True)
+    updated = soup.select_one("span.update-date").get_text(strip=True)
 
-    rate_22k_tag = soup.find("span", class_=lambda c: c and "22kt-price" in c)
-    rate_24k_tag = soup.find("span", class_=lambda c: c and "24kt-price" in c)
-    updated_tag = soup.find("span", class_=lambda c: c and "update-date" in c)
-
-    if not rate_22k_tag:
-        raise Exception("22K gold rate not found from Malabar page")
-
-    rate_22k = rate_22k_tag.get_text(strip=True)
-    rate_24k = rate_24k_tag.get_text(strip=True) if rate_24k_tag else "Not found"
-    updated = updated_tag.get_text(strip=True) if updated_tag else datetime.now(ZoneInfo("Asia/Qatar")).strftime("%d-%m-%Y %I:%M %p")
-
-    return rate_22k, rate_24k, updated
+    return rate22, rate24, updated
 
 def send_email(rate_22k, rate_24k, updated):
     body = f"""Daily Gold Rate - Doha
