@@ -15,34 +15,34 @@ def get_gold_rate():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
 
-        page = browser.new_page()
+        page = browser.new_page(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+        )
 
-        page.goto(URL, wait_until="networkidle")
+        page.goto(URL, wait_until="domcontentloaded", timeout=60000)
+        page.wait_for_timeout(10000)
 
-        # Country
+        print("Page title:", page.title())
+        print("Page URL:", page.url)
+        print("Country dropdown count:", page.locator("#gold-country-list").count())
+        print("Page text sample:", page.locator("body").inner_text(timeout=10000)[:500])
+
+        page.wait_for_selector("#gold-country-list", timeout=60000)
+
         page.select_option("#gold-country-list", label="Qatar")
-
-        # Wait until states are loaded
-        page.wait_for_timeout(2000)
-
-        # State
-        page.select_option("#gold-state-list", label="Doha")
-
-        # Submit
-        page.click("button.submit.gold-rate-btn")
-
-        # Wait for the rates to refresh
         page.wait_for_timeout(3000)
 
-        html = page.content()
+        page.select_option("#gold-state-list", label="Doha")
+        page.wait_for_timeout(1000)
+
+        page.click("button.submit.gold-rate-btn")
+        page.wait_for_timeout(5000)
+
+        rate22 = page.locator("span.22kt-price").inner_text()
+        rate24 = page.locator("li.right_india-24-carat-rate span.price").inner_text()
+        updated = page.locator("span.update-date").inner_text()
 
         browser.close()
-
-    soup = BeautifulSoup(html, "html.parser")
-
-    rate22 = soup.select_one("span.price.\\32 2kt-price").get_text(strip=True)
-    rate24 = soup.select_one("li.right_india-24-carat-rate span.price").get_text(strip=True)
-    updated = soup.select_one("span.update-date").get_text(strip=True)
 
     return rate22, rate24, updated
 
