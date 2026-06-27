@@ -1,11 +1,6 @@
 import os
-import re
 import smtplib
-import requests
-from bs4 import BeautifulSoup
 from email.mime.text import MIMEText
-from datetime import datetime
-from zoneinfo import ZoneInfo
 from playwright.sync_api import sync_playwright
 
 URL = "https://www.malabargoldanddiamonds.com/ae/goldprice"
@@ -20,12 +15,7 @@ def get_gold_rate():
         )
 
         page.goto(URL, wait_until="domcontentloaded", timeout=60000)
-        page.wait_for_timeout(10000)
-
-        print("Page title:", page.title())
-        print("Page URL:", page.url)
-        print("Country dropdown count:", page.locator("#gold-country-list").count())
-        print("Page text sample:", page.locator("body").inner_text(timeout=10000)[:500])
+        page.wait_for_timeout(8000)
 
         page.wait_for_selector("#gold-country-list", timeout=60000)
 
@@ -36,23 +26,24 @@ def get_gold_rate():
         page.wait_for_timeout(1000)
 
         page.click("button.submit.gold-rate-btn")
-        page.wait_for_timeout(3000)
+        page.wait_for_timeout(4000)
 
-        rate22 = page.locator("span.22kt-price").inner_text()
+        rate22 = page.locator("span[class*='22kt-price']").inner_text()
         rate24 = page.locator("li.right_india-24-carat-rate span.price").inner_text()
         updated = page.locator("span.update-date").inner_text()
 
         browser.close()
 
-    return rate22, rate24, updated
+        return rate22, rate24, updated
 
-def send_email(rate_22k, rate_24k, updated):
+
+def send_email(rate22, rate24, updated):
     body = f"""Daily Gold Rate - Doha
 
-22 Carat Gold: {rate_22k}
-24 Carat Gold: {rate_24k}
+22 Carat Gold: {rate22}
+24 Carat Gold: {rate24}
 
-Checked Time: {updated} Doha Time
+Updated Time: {updated}
 
 Source:
 {URL}
@@ -67,6 +58,7 @@ Source:
         server.login(os.environ["EMAIL_USER"], os.environ["EMAIL_APP_PASSWORD"])
         server.send_message(msg)
 
+
 if __name__ == "__main__":
-    rate_22k, rate_24k, updated = get_gold_rate()
-    send_email(rate_22k, rate_24k, updated)
+    rate22, rate24, updated = get_gold_rate()
+    send_email(rate22, rate24, updated)
