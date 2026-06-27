@@ -5,7 +5,7 @@ from email.mime.text import MIMEText
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-URL = "https://www.malabargoldanddiamonds.com/ae/malabarprice/index/getrates/?country=QA&state=Doha"
+URL = "https://www.malabargoldanddiamonds.com/us/malabarprice/index/getrates/?country=QA&state=Doha"
 SOURCE_URL = "https://www.malabargoldanddiamonds.com/ae/goldprice"
 
 
