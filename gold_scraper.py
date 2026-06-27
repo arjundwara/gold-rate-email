@@ -29,14 +29,14 @@ def get_gold_rate():
 
         page.wait_for_selector("#gold-country-list", timeout=60000)
 
-        page.select_option("#gold-country-list", label="Qatar")
-        page.wait_for_timeout(3000)
+        page.select_option("#gold-country-list", value="QA")
+        page.wait_for_timeout(2000)
 
-        page.select_option("#gold-state-list", label="Doha")
+        page.select_option("#gold-state-list", value="Doha")
         page.wait_for_timeout(1000)
 
         page.click("button.submit.gold-rate-btn")
-        page.wait_for_timeout(5000)
+        page.wait_for_timeout(3000)
 
         rate22 = page.locator("span.22kt-price").inner_text()
         rate24 = page.locator("li.right_india-24-carat-rate span.price").inner_text()
