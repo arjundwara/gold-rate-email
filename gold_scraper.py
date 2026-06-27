@@ -7,65 +7,34 @@ from email.mime.text import MIMEText
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-URL = "https://goldpricez.com/qa/22k/gram"
+URL = "https://www.malabargoldanddiamonds.com/ae/goldprice"
 
-PATTERN_22K = re.compile(r'\b22\s*(?:K|Karat)\b', re.I)
-PATTERN_24K = re.compile(r'\b24\s*(?:K|Karat)\b', re.I)
 
 def get_gold_rate():
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
+        "User-Agent": "Mozilla/5.0"
     }
 
     r = requests.get(URL, timeout=30, headers=headers)
     r.raise_for_status()
 
-    soup = BeautifulSoup(r.text, "html.parser")
-    text = soup.get_text(" ", strip=True)
+    html = r.text
+    soup = BeautifulSoup(html, "html.parser")
 
     print("Page title:", soup.title.get_text(strip=True) if soup.title else "No title")
+    print("22kt-price found:", "22kt-price" in html)
+    print("QAR found:", "QAR" in html)
 
-    rate_22k_raw = None
-    rate_24k_raw = None
+    rate_22k_tag = soup.find("span", class_=lambda c: c and "22kt-price" in c)
+    rate_24k_tag = soup.find("span", class_=lambda c: c and "24kt-price" in c)
+    updated_tag = soup.find("span", class_=lambda c: c and "update-date" in c)
 
-    # Strategy 1: look for table rows with "22 Karat" / "24 Karat" labels
-    for row in soup.find_all("tr"):
-        cells = row.find_all("td")
-        if len(cells) >= 2:
-            label = cells[0].get_text(strip=True)
-            if PATTERN_22K.search(label) and not rate_22k_raw:
-                for cell in cells[1:]:
-                    val = re.sub(r'[^\d.]', '', cell.get_text(strip=True))
-                    if re.match(r'\d+\.?\d*$', val):
-                        rate_22k_raw = val
-                        break
-            elif PATTERN_24K.search(label) and not rate_24k_raw:
-                for cell in cells[1:]:
-                    val = re.sub(r'[^\d.]', '', cell.get_text(strip=True))
-                    if re.match(r'\d+\.?\d*$', val):
-                        rate_24k_raw = val
-                        break
+    if not rate_22k_tag:
+        raise Exception("22K gold rate not found from Malabar page")
 
-    # Strategy 2: fallback regex on full page text
-    if not rate_22k_raw:
-        m = re.search(r'22\s*(?:K|Karat)[^0-9]{1,60}?([\d]+(?:\.[\d]+)?)', text, re.I)
-        if m:
-            rate_22k_raw = m.group(1)
-
-    if not rate_24k_raw:
-        m = re.search(r'24\s*(?:K|Karat)[^0-9]{1,60}?([\d]+(?:\.[\d]+)?)', text, re.I)
-        if m:
-            rate_24k_raw = m.group(1)
-
-    if not rate_22k_raw:
-        raise Exception("22K gold rate not found. The source page may have changed structure.")
-
-    rate_22k = f"QAR {rate_22k_raw} / gram"
-    rate_24k = f"QAR {rate_24k_raw} / gram" if rate_24k_raw else "Not found"
-
-    updated = datetime.now(ZoneInfo("Asia/Qatar")).strftime("%d-%m-%Y %I:%M %p")
+    rate_22k = rate_22k_tag.get_text(strip=True)
+    rate_24k = rate_24k_tag.get_text(strip=True) if rate_24k_tag else "Not found"
+    updated = updated_tag.get_text(strip=True) if updated_tag else datetime.now(ZoneInfo("Asia/Qatar")).strftime("%d-%m-%Y %I:%M %p")
 
     return rate_22k, rate_24k, updated
 
