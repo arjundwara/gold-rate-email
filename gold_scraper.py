@@ -10,24 +10,42 @@ SOURCE_URL = "https://www.malabargoldanddiamonds.com/ae/goldprice"
 
 
 def get_gold_rate():
+    session = requests.Session()
+
     headers = {
-        "User-Agent": "Mozilla/5.0",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/148.0.0.0 Safari/537.36",
+        "Accept-Language": "en-IN,en-GB;q=0.9,en-US;q=0.8,en;q=0.7",
+    }
+
+    # First open source page to get cookies
+    session.get(SOURCE_URL, headers=headers, timeout=30)
+
+    api_url = "https://www.malabargoldanddiamonds.com/ae/malabarprice/index/getrates/"
+
+    api_headers = {
+        **headers,
         "Accept": "application/json, text/javascript, */*; q=0.01",
         "X-Requested-With": "XMLHttpRequest",
         "Referer": SOURCE_URL,
         "Origin": "https://www.malabargoldanddiamonds.com",
     }
 
-    response = requests.post(URL, headers=headers, timeout=30)
+    response = session.post(
+        api_url,
+        params={"country": "QA", "state": "Doha"},
+        headers=api_headers,
+        timeout=30
+    )
+
+    print("Status:", response.status_code)
+    print("Content-Type:", response.headers.get("content-type"))
+    print("Response preview:", response.text[:300])
+
     response.raise_for_status()
 
     data = response.json()
 
-    rate22 = data["22kt"]
-    rate24 = data["24kt"]
-    updated = data["updated_time"]
-
-    return rate22, rate24, updated
+    return data["22kt"], data["24kt"], data["updated_time"]
 
 
 def send_email(rate22, rate24, updated):
