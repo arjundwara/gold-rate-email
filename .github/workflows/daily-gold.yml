@@ -2,7 +2,7 @@ name: Gold Rate Email
 
 on:
   schedule:
-   - cron: '0 15 * * *'
+    - cron: '0 15 * * *'
   workflow_dispatch:
 
 jobs:
@@ -16,9 +16,14 @@ jobs:
         with:
           python-version: '3.11'
 
-      - run: pip install -r requirements.txt
+      - name: Install Python packages
+        run: pip install -r requirements.txt
 
-      - run: python gold_scraper.py
+      - name: Install Playwright Chromium
+        run: playwright install chromium
+
+      - name: Run gold scraper
+        run: python gold_scraper.py
         env:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
